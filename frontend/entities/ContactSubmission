@@ -1,0 +1,60 @@
+{
+  "name": "ContactSubmission",
+  "type": "object",
+  "properties": {
+    "full_name": {
+      "type": "string",
+      "description": "Full name of the person"
+    },
+    "email": {
+      "type": "string",
+      "description": "Email address"
+    },
+    "company": {
+      "type": "string",
+      "description": "Company name (optional)"
+    },
+    "budget_range": {
+      "type": "string",
+      "enum": [
+        "< \u20b950K",
+        "\u20b950K\u20132L",
+        "\u20b92L\u20135L",
+        "\u20b95L+"
+      ],
+      "description": "Budget range"
+    },
+    "project_type": {
+      "type": "string",
+      "enum": [
+        "Web App",
+        "Mobile App",
+        "UI/UX Design",
+        "E-commerce",
+        "AI Integration",
+        "Other"
+      ],
+      "description": "Type of project"
+    },
+    "description": {
+      "type": "string",
+      "description": "Project description"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "new",
+        "contacted",
+        "in_progress",
+        "closed"
+      ],
+      "default": "new"
+    }
+  },
+  "required": [
+    "full_name",
+    "email",
+    "project_type",
+    "description"
+  ]
+}

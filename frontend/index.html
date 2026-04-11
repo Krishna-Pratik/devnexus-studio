@@ -5,13 +5,164 @@
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png" />
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="/favicon.png" />
-    <meta name="theme-color" content="#0a0a0a" />
+    <meta name="theme-color" content="#0b0b0f" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="manifest" href="/manifest.json" />
     <title>Devnexus Studio</title>
+    <style>
+      html,
+      body,
+      #root {
+        width: 100%;
+        height: 100%;
+      }
+
+      html {
+        color-scheme: dark;
+        background: #0b0b0f;
+      }
+
+      body {
+        margin: 0;
+        overflow-x: hidden;
+        background:
+          radial-gradient(circle at top left, rgba(139, 92, 246, 0.18), transparent 34%),
+          radial-gradient(circle at bottom right, rgba(167, 139, 250, 0.14), transparent 30%),
+          linear-gradient(135deg, #050509 0%, #0b0b0f 46%, #120822 100%);
+        color: #ffffff;
+      }
+
+      #app-root {
+        width: 100%;
+        height: 100%;
+      }
+
+      .devnexus-boot-loader {
+        position: fixed;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        background:
+          radial-gradient(circle at center, rgba(139, 92, 246, 0.12), transparent 34%),
+          linear-gradient(135deg, #050509 0%, #0b0b0f 46%, #120822 100%);
+        z-index: 9999;
+        opacity: 1;
+        transition: opacity 260ms ease, visibility 260ms ease;
+        will-change: opacity;
+      }
+
+      .devnexus-boot-loader.is-hidden {
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+      }
+
+      .devnexus-boot-loader__glow {
+        position: absolute;
+        width: 220px;
+        height: 220px;
+        border-radius: 9999px;
+        background: radial-gradient(circle, rgba(139, 92, 246, 0.22) 0%, rgba(139, 92, 246, 0) 70%);
+        filter: blur(34px);
+        opacity: 0.85;
+      }
+
+      .devnexus-boot-loader__card {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 14px;
+        padding: 22px 26px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 24px;
+        background: rgba(8, 8, 14, 0.5);
+        backdrop-filter: blur(18px);
+        -webkit-backdrop-filter: blur(18px);
+        box-shadow:
+          0 0 0 1px rgba(139, 92, 246, 0.08),
+          0 18px 60px rgba(0, 0, 0, 0.45);
+      }
+
+      .devnexus-boot-loader__ring {
+        position: relative;
+        width: 68px;
+        height: 68px;
+      }
+
+      .devnexus-boot-loader__ring::before,
+      .devnexus-boot-loader__ring::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        border-radius: 9999px;
+      }
+
+      .devnexus-boot-loader__ring::before {
+        border: 2px solid rgba(167, 139, 250, 0.18);
+      }
+
+      .devnexus-boot-loader__ring::after {
+        border: 2px solid transparent;
+        border-top-color: #a78bfa;
+        border-right-color: #8b5cf6;
+        box-shadow: 0 0 22px rgba(139, 92, 246, 0.45);
+        animation: devnexus-spin 0.9s linear infinite;
+      }
+
+      .devnexus-boot-loader__brand {
+        font-family: Inter, system-ui, sans-serif;
+        font-size: 0.95rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: rgba(255, 255, 255, 0.88);
+      }
+
+      .devnexus-boot-loader__brand span {
+        color: #a78bfa;
+      }
+
+      .devnexus-boot-loader__subtext {
+        font-family: Inter, system-ui, sans-serif;
+        font-size: 0.8rem;
+        color: rgba(196, 181, 253, 0.74);
+      }
+
+      @keyframes devnexus-spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+      }
+
+      @media (max-width: 640px) {
+        .devnexus-boot-loader__card {
+          padding: 18px 20px;
+          border-radius: 20px;
+        }
+
+        .devnexus-boot-loader__ring {
+          width: 60px;
+          height: 60px;
+        }
+
+        .devnexus-boot-loader__glow {
+          width: 180px;
+          height: 180px;
+        }
+      }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div id="boot-loader" class="devnexus-boot-loader" aria-label="Loading Devnexus Studio">
+        <div class="devnexus-boot-loader__glow" aria-hidden="true"></div>
+        <div class="devnexus-boot-loader__card">
+          <div class="devnexus-boot-loader__ring" aria-hidden="true"></div>
+          <div class="devnexus-boot-loader__brand">Devnexus <span>Studio</span></div>
+          <div class="devnexus-boot-loader__subtext">Loading...</div>
+        </div>
+      </div>
+      <div id="app-root"></div>
+    </div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

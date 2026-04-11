@@ -11,12 +11,18 @@ if (import.meta.env.DEV) {
 }
 
 const rootElement = document.getElementById('root');
+const appRootElement = document.getElementById('app-root');
+const bootLoaderElement = document.getElementById('boot-loader');
 
 if (!rootElement) {
   throw new Error('Root element not found');
 }
 
-ReactDOM.createRoot(rootElement).render(
+if (!appRootElement) {
+  throw new Error('App root element not found');
+}
+
+ReactDOM.createRoot(appRootElement).render(
   googleClientId ? (
     <GoogleOAuthProvider clientId={googleClientId}>
       <App />
@@ -25,3 +31,14 @@ ReactDOM.createRoot(rootElement).render(
     <App />
   )
 )
+
+if (bootLoaderElement) {
+  window.requestAnimationFrame(() => {
+    window.setTimeout(() => {
+      bootLoaderElement.classList.add('is-hidden');
+      window.setTimeout(() => {
+        bootLoaderElement.remove();
+      }, 280);
+    }, 520);
+  });
+}

@@ -4,8 +4,13 @@ import { apiFetch } from '@/lib/api';
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
+  const getToken = () => localStorage.getItem('token');
+  const hasSessionHint = () => localStorage.getItem('auth_session_hint') === '1';
+  const markSessionHint = () => localStorage.setItem('auth_session_hint', '1');
+  const clearSessionHint = () => localStorage.removeItem('auth_session_hint');
+
   const [user, setUser] = useState(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(Boolean(localStorage.getItem('token')));
+  const [isAuthenticated, setIsAuthenticated] = useState(Boolean(getToken()));
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
 
   useEffect(() => {
@@ -13,8 +18,19 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const initializeAuth = async () => {
+    const hasToken = Boolean(getToken());
+    const hasHint = hasSessionHint();
+
+    if (!hasToken && !hasHint) {
+      setUser(null);
+      setIsAuthenticated(false);
+      setIsLoadingAuth(false);
+      console.info('[Auth] initializeAuth skipped (no token/session hint)');
+      return;
+    }
+
     setIsLoadingAuth(true);
-    console.info('[Auth] initializeAuth start', { hasToken: Boolean(localStorage.getItem('token')) });
+    console.info('[Auth] initializeAuth start', { hasToken, hasSessionHint: hasHint });
 
     try {
       const currentUser = await apiFetch('/auth/me');
@@ -24,7 +40,9 @@ export const AuthProvider = ({ children }) => {
     } catch (_error) {
       setIsAuthenticated(false);
       setUser(null);
-      console.warn('[Auth] initializeAuth failed');
+      localStorage.removeItem('token');
+      clearSessionHint();
+      console.info('[Auth] initializeAuth unauthenticated');
     } finally {
       setIsLoadingAuth(false);
     }
@@ -32,16 +50,19 @@ export const AuthProvider = ({ children }) => {
 
   const refreshUser = async () => {
     setIsLoadingAuth(true);
-    console.info('[Auth] refreshUser start', { hasToken: Boolean(localStorage.getItem('token')) });
+    console.info('[Auth] refreshUser start', { hasToken: Boolean(getToken()), hasSessionHint: hasSessionHint() });
     try {
       const currentUser = await apiFetch('/auth/me');
       setUser(currentUser);
       setIsAuthenticated(true);
+      markSessionHint();
       console.info('[Auth] refreshUser success');
     } catch (_error) {
       setUser(null);
       setIsAuthenticated(false);
-      console.warn('[Auth] refreshUser failed');
+      localStorage.removeItem('token');
+      clearSessionHint();
+      console.info('[Auth] refreshUser unauthenticated');
     } finally {
       setIsLoadingAuth(false);
     }
@@ -57,6 +78,7 @@ export const AuthProvider = ({ children }) => {
       if (token) {
         localStorage.setItem('token', token);
       }
+      markSessionHint();
       setIsAuthenticated(true);
       if (authResponse?._id || authResponse?.email) {
         setUser(authResponse);
@@ -80,6 +102,7 @@ export const AuthProvider = ({ children }) => {
       if (token) {
         localStorage.setItem('token', token);
       }
+      markSessionHint();
       setIsAuthenticated(true);
       if (authResponse?._id || authResponse?.email) {
         setUser(authResponse);
@@ -103,6 +126,7 @@ export const AuthProvider = ({ children }) => {
       if (token) {
         localStorage.setItem('token', token);
       }
+      markSessionHint();
       setIsAuthenticated(true);
       if (authResponse?._id || authResponse?.email) {
         setUser(authResponse);
@@ -128,6 +152,7 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
     setIsAuthenticated(false);
     localStorage.removeItem('token');
+    clearSessionHint();
     console.info('[Auth] logout complete');
     
     if (shouldRedirect) {

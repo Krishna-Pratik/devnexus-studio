@@ -28,14 +28,7 @@
   </a>
 
   <br/>
-  <br/>
 
-  <p>
-    <a href="#installation--setup"><b>🚀 Get Started</b></a> &nbsp;&nbsp;•&nbsp;&nbsp;
-    <a href="#architecture--system-flow"><b>🏗️ System Architecture</b></a> &nbsp;&nbsp;•&nbsp;&nbsp;
-    <a href="#security-highlights"><b>🛡️ Security Protocol</b></a> &nbsp;&nbsp;•&nbsp;&nbsp;
-    <a href="https://github.com/Krishna-Pratik/devnexus-studio/issues"><b>🐛 Report Bug</b></a>
-  </p>
 </div>
 
 ---
@@ -111,7 +104,7 @@ Devnexus Studio is our proprietary digital solution designed to help businesses 
 - 🎨 **Bespoke Portfolio Presentation:** High-performance, visually stunning project showcases with buttery-smooth animations.
 
 ### 🛠️ Technical Capabilities
--  **Secure Authentication:** Robust local signup/login backed by seamless Google OAuth integration.
+- **Secure Authentication:** Robust local signup/login backed by seamless Google OAuth integration.
 - 🔄 **State & Session Persistence:** Protected routes utilizing auto-restoring user states and secure `httpOnly` cookies.
 - 🛑 **Reliable API Handling:** Centralized schema validation (`Zod`) guaranteeing consistent data integrity and standardized error reporting.
 - ⚡ **Optimized UX/UI:** Accessible interfaces built with global loading skeletons, responsive grid layouts, and comprehensive error recovery.

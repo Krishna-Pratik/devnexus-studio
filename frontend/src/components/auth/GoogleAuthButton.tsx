@@ -93,12 +93,13 @@ export default function GoogleAuthButton({ mode }: GoogleAuthButtonProps) {
         (data as { jwt?: string })?.jwt ||
         ((data as { data?: { token?: string } })?.data?.token ?? '');
 
-      if (!token) {
-        throw new Error('Authentication succeeded but no token was returned by the server.');
+      if (token) {
+        localStorage.setItem('token', token);
+        console.info('[GoogleAuth] JWT stored in localStorage');
+      } else {
+        // Some backends authenticate via httpOnly cookies and don't return token in JSON.
+        console.info('[GoogleAuth] No token in response; continuing with cookie-based session');
       }
-
-      localStorage.setItem('token', token);
-      console.info('[GoogleAuth] JWT stored in localStorage');
 
       await refreshUser();
       navigate('/dashboard', { replace: true });

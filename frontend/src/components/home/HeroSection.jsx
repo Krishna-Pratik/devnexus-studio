@@ -115,13 +115,6 @@ export default function HeroSection() {
                 <MessageCircle className="w-4 h-4" />
                 Let's Talk
               </Link>
-              <Link
-                to={createPageUrl('Team')}
-                className="group flex items-center gap-2 px-7 py-3.5 rounded-full border border-purple-500/30 text-purple-200 hover:text-white hover:border-purple-400/60 transition-all hover:bg-purple-500/10"
-              >
-                <Users className="w-4 h-4" />
-                Meet the Team
-              </Link>
             </motion.div>
           </div>
 

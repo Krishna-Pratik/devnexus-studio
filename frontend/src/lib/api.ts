@@ -7,6 +7,12 @@ export const API_URL = normalizedEnvBase
 
 export const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
   const headers = new Headers(options.headers);
+  const token = localStorage.getItem('token');
+
+  if (token && !headers.has('Authorization')) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
+
   if (!headers.has('Content-Type') && !(options.body instanceof FormData)) {
     headers.set('Content-Type', 'application/json');
   }

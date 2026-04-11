@@ -5,7 +5,7 @@ const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(Boolean(localStorage.getItem('token')));
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
 
   useEffect(() => {
@@ -14,14 +14,17 @@ export const AuthProvider = ({ children }) => {
 
   const initializeAuth = async () => {
     setIsLoadingAuth(true);
+    console.info('[Auth] initializeAuth start', { hasToken: Boolean(localStorage.getItem('token')) });
 
     try {
       const currentUser = await apiFetch('/auth/me');
       setUser(currentUser);
       setIsAuthenticated(true);
+      console.info('[Auth] initializeAuth success');
     } catch (_error) {
       setIsAuthenticated(false);
       setUser(null);
+      console.warn('[Auth] initializeAuth failed');
     } finally {
       setIsLoadingAuth(false);
     }
@@ -29,13 +32,16 @@ export const AuthProvider = ({ children }) => {
 
   const refreshUser = async () => {
     setIsLoadingAuth(true);
+    console.info('[Auth] refreshUser start', { hasToken: Boolean(localStorage.getItem('token')) });
     try {
       const currentUser = await apiFetch('/auth/me');
       setUser(currentUser);
       setIsAuthenticated(true);
+      console.info('[Auth] refreshUser success');
     } catch (_error) {
       setUser(null);
       setIsAuthenticated(false);
+      console.warn('[Auth] refreshUser failed');
     } finally {
       setIsLoadingAuth(false);
     }
@@ -47,9 +53,19 @@ export const AuthProvider = ({ children }) => {
         method: 'POST',
         body: JSON.stringify({ email, password }),
       });
+      const token = authResponse?.token || authResponse?.jwt || authResponse?.data?.token;
+      if (token) {
+        localStorage.setItem('token', token);
+      }
+      setIsAuthenticated(true);
+      if (authResponse?._id || authResponse?.email) {
+        setUser(authResponse);
+      }
+      console.info('[Auth] login success', { hasToken: Boolean(token) });
       await refreshUser();
       return authResponse;
     } catch (error) {
+      console.error('[Auth] login failed', error);
       throw error;
     }
   };
@@ -60,9 +76,19 @@ export const AuthProvider = ({ children }) => {
         method: 'POST',
         body: JSON.stringify({ name, email, password, confirmPassword }),
       });
+      const token = authResponse?.token || authResponse?.jwt || authResponse?.data?.token;
+      if (token) {
+        localStorage.setItem('token', token);
+      }
+      setIsAuthenticated(true);
+      if (authResponse?._id || authResponse?.email) {
+        setUser(authResponse);
+      }
+      console.info('[Auth] signup success', { hasToken: Boolean(token) });
       await refreshUser();
       return authResponse;
     } catch (error) {
+      console.error('[Auth] signup failed', error);
       throw error;
     }
   };
@@ -73,9 +99,19 @@ export const AuthProvider = ({ children }) => {
         method: 'POST',
         body: JSON.stringify({ credential }),
       });
+      const token = authResponse?.token || authResponse?.jwt || authResponse?.data?.token;
+      if (token) {
+        localStorage.setItem('token', token);
+      }
+      setIsAuthenticated(true);
+      if (authResponse?._id || authResponse?.email) {
+        setUser(authResponse);
+      }
+      console.info('[Auth] googleAuth success', { hasToken: Boolean(token) });
       await refreshUser();
       return authResponse;
     } catch (error) {
+      console.error('[Auth] googleAuth failed', error);
       throw error;
     }
   };
@@ -91,6 +127,8 @@ export const AuthProvider = ({ children }) => {
 
     setUser(null);
     setIsAuthenticated(false);
+    localStorage.removeItem('token');
+    console.info('[Auth] logout complete');
     
     if (shouldRedirect) {
       window.location.href = '/login';

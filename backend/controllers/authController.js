@@ -15,10 +15,11 @@ const setAuthCookie = (res, token) => {
   });
 };
 
-const buildAuthUserResponse = (user) => ({
+const buildAuthUserResponse = (user, token) => ({
   _id: user._id,
   name: user.name,
   email: user.email,
+  token,
 });
 
 // @desc    Register a new user
@@ -67,7 +68,7 @@ export const signup = async (req, res, next) => {
     if (user) {
       const token = generateToken(user._id);
       setAuthCookie(res, token);
-      return res.status(201).json(buildAuthUserResponse(user));
+      return res.status(201).json(buildAuthUserResponse(user, token));
     } else {
       res.status(400);
       throw new Error('Invalid user data');
@@ -106,7 +107,7 @@ export const login = async (req, res, next) => {
     if (user && (await user.matchPassword(password))) {
       const token = generateToken(user._id);
       setAuthCookie(res, token);
-      return res.json(buildAuthUserResponse(user));
+      return res.json(buildAuthUserResponse(user, token));
     } else {
       res.status(401);
       throw new Error('Invalid email or password');
@@ -191,7 +192,7 @@ export const googleAuth = async (req, res, next) => {
 
     const token = generateToken(user._id);
     setAuthCookie(res, token);
-    return res.status(200).json(buildAuthUserResponse(user));
+    return res.status(200).json(buildAuthUserResponse(user, token));
   } catch (error) {
     next(error);
   }

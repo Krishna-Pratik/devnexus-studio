@@ -102,7 +102,7 @@ export default function GoogleAuthButton({ mode }: GoogleAuthButtonProps) {
       }
 
       await refreshUser();
-      navigate('/dashboard', { replace: true });
+      navigate('/', { replace: true });
     } catch (authError) {
       console.error('[GoogleAuth] Sign-in flow failed', authError);
       if (authError instanceof Error && authError.message) {
@@ -155,7 +155,7 @@ export default function GoogleAuthButton({ mode }: GoogleAuthButtonProps) {
         if (buttonRef.current) {
           buttonRef.current.innerHTML = '';
           googleId.renderButton(buttonRef.current, {
-            text: mode === 'signup' ? 'signup_with' : 'signin_with',
+            text: mode === 'signup' ? 'continue_with' : 'signin_with',
             theme: 'filled_black',
             shape: 'pill',
             size: 'large',

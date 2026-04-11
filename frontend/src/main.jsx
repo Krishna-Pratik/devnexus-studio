@@ -6,7 +6,17 @@ import '@/index.css'
 
 const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 
-ReactDOM.createRoot(document.getElementById('root')).render(
+if (import.meta.env.DEV) {
+  console.info('[Env] VITE_GOOGLE_CLIENT_ID:', import.meta.env.VITE_GOOGLE_CLIENT_ID);
+}
+
+const rootElement = document.getElementById('root');
+
+if (!rootElement) {
+  throw new Error('Root element not found');
+}
+
+ReactDOM.createRoot(rootElement).render(
   googleClientId ? (
     <GoogleOAuthProvider clientId={googleClientId}>
       <App />

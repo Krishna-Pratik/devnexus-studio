@@ -3,6 +3,7 @@ import ContactSubmission from '../models/ContactSubmission.js';
 import { getMailUser, getTransporter, isMailConfigured } from '../config/mail.js';
 
 const EMAIL_REGEX = /^\S+@\S+\.\S+$/;
+const EMAIL_NOTIFICATION_TIMEOUT_MS = 12000;
 
 const escapeHtml = (value = '') => String(value)
   .replace(/&/g, '&amp;')
@@ -40,6 +41,60 @@ const buildMailHtml = (submission, submittedAtISO) => {
       <p style="padding:12px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;white-space:pre-wrap;">${escapeHtml(description)}</p>
     </div>
   `;
+};
+
+const sendNotificationEmailInBackground = async (submission, submittedAtISO, file) => {
+  const mailUser = getMailUser();
+  const adminEmail = process.env.CONTACT_ADMIN_EMAIL || mailUser;
+  if (!adminEmail) {
+    return;
+  }
+
+  if (!isMailConfigured()) {
+    console.error('EMAIL WARNING: Missing EMAIL_USER or EMAIL_PASS. Contact submission saved without email notification.');
+    return;
+  }
+
+  try {
+    const transporter = getTransporter();
+
+    await Promise.race([
+      transporter.sendMail({
+        from: `"Devnexus Studio" <${mailUser}>`,
+        to: adminEmail,
+        subject: `New Contact Request from ${submission.name}`,
+        replyTo: submission.email,
+        text: [
+          `Submitted at: ${submittedAtISO}`,
+          `Name: ${submission.name}`,
+          `Email: ${submission.email}`,
+          `Company: ${submission.company || 'N/A'}`,
+          `Phone: ${submission.phone || 'N/A'}`,
+          `Budget: ${submission.budget || 'N/A'}`,
+          `Project Type: ${submission.projectType || 'N/A'}`,
+          `Timeline: ${submission.timeline || 'N/A'}`,
+          '',
+          'Project Description:',
+          submission.description,
+        ].join('\n'),
+        html: buildMailHtml(submission, submittedAtISO),
+        attachments: file
+          ? [
+              {
+                filename: file.originalname,
+                path: file.path,
+                contentType: file.mimetype,
+              },
+            ]
+          : [],
+      }),
+      new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Email notification timed out.')), EMAIL_NOTIFICATION_TIMEOUT_MS);
+      }),
+    ]);
+  } catch (emailError) {
+    console.error('EMAIL WARNING: Contact submission saved but email notification failed.', emailError);
+  }
 };
 
 export const createContactSubmission = async (req, res, next) => {
@@ -112,54 +167,7 @@ export const createContactSubmission = async (req, res, next) => {
       ? new Date(submission.meta.submittedAt).toISOString()
       : new Date().toISOString();
 
-    const mailUser = getMailUser();
-    const adminEmail = process.env.CONTACT_ADMIN_EMAIL || mailUser;
-    if (adminEmail) {
-      if (!isMailConfigured()) {
-        console.error('EMAIL ERROR: Missing EMAIL_USER or EMAIL_PASS in environment variables.');
-        res.status(500);
-        throw new Error('Email service is not configured.');
-      }
-
-      try {
-        const transporter = getTransporter();
-        await transporter.sendMail({
-          from: `"Devnexus Studio" <${mailUser}>`,
-          to: adminEmail,
-          subject: `New Contact Request from ${submission.name}`,
-          replyTo: submission.email,
-          text: [
-            `Submitted at: ${submittedAtISO}`,
-            `Name: ${submission.name}`,
-            `Email: ${submission.email}`,
-            `Company: ${submission.company || 'N/A'}`,
-            `Phone: ${submission.phone || 'N/A'}`,
-            `Budget: ${submission.budget || 'N/A'}`,
-            `Project Type: ${submission.projectType || 'N/A'}`,
-            `Timeline: ${submission.timeline || 'N/A'}`,
-            '',
-            'Project Description:',
-            submission.description,
-          ].join('\n'),
-          html: buildMailHtml(submission, submittedAtISO),
-          attachments: req.file
-            ? [
-                {
-                  filename: req.file.originalname,
-                  path: req.file.path,
-                  contentType: req.file.mimetype,
-                },
-              ]
-            : [],
-        });
-      } catch (emailError) {
-        console.error('EMAIL ERROR:', emailError);
-        res.status(500);
-        throw new Error('Failed to send email notification.');
-      }
-    }
-
-    return res.status(201).json({
+    res.status(201).json({
       success: true,
       message: 'Thanks! We will get back to you within 24 hours.',
       data: {
@@ -167,6 +175,10 @@ export const createContactSubmission = async (req, res, next) => {
         submittedAt: submittedAtISO,
       },
     });
+
+    // Keep API response fast; email delivery is best-effort and should not block client UX.
+    void sendNotificationEmailInBackground(submission, submittedAtISO, req.file);
+    return;
   } catch (error) {
     next(error);
   }

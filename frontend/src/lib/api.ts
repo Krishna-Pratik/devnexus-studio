@@ -1,8 +1,9 @@
 // API service utility
 const envApiUrl = import.meta.env.VITE_API_URL?.trim();
 const normalizedEnvBase = envApiUrl?.replace(/\/$/, '');
+const envHasApiSuffix = normalizedEnvBase?.endsWith('/api');
 export const API_URL = normalizedEnvBase
-  ? `${normalizedEnvBase}/api`
+  ? (envHasApiSuffix ? normalizedEnvBase : `${normalizedEnvBase}/api`)
   : '/api';
 
 const REQUEST_TIMEOUT_MS = 35000;

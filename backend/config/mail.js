@@ -20,7 +20,13 @@ export const getTransporter = () => {
   }
 
   cachedTransporter = nodemailer.createTransport({
-    service: 'gmail',
+    host: 'smtp.gmail.com',
+    port: 587,
+    secure: false,
+    requireTLS: true,
+    connectionTimeout: 30000,
+    greetingTimeout: 20000,
+    socketTimeout: 30000,
     auth: {
       user,
       pass,

@@ -3,6 +3,7 @@ import express from 'express';
 import dotenv from 'dotenv';
 import fs from 'fs';
 import https from 'https';
+import dns from 'dns';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
@@ -17,6 +18,8 @@ import paymentRoutes from './routes/paymentRoutes.js';
 import activityRoutes from './routes/activityRoutes.js';
 import contactRoutes from './routes/contactRoutes.js';
 import { errorHandler, notFound } from './middlewares/errorMiddleware.js';
+
+dns.setDefaultResultOrder('ipv4first');
 
 dotenv.config();
 

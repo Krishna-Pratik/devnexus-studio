@@ -47,6 +47,7 @@ const sendNotificationEmailInBackground = async (submission, submittedAtISO, fil
   const mailUser = getMailUser();
   const adminEmail = process.env.CONTACT_ADMIN_EMAIL || mailUser;
   if (!adminEmail) {
+    console.error('EMAIL WARNING: CONTACT_ADMIN_EMAIL and EMAIL_USER are both empty. Skipping email notification.');
     return;
   }
 
@@ -57,6 +58,7 @@ const sendNotificationEmailInBackground = async (submission, submittedAtISO, fil
 
   try {
     const transporter = getTransporter();
+    console.info(`EMAIL INFO: Sending contact notification for submission ${submission._id} to ${adminEmail}.`);
 
     await Promise.race([
       transporter.sendMail({
@@ -92,8 +94,17 @@ const sendNotificationEmailInBackground = async (submission, submittedAtISO, fil
         setTimeout(() => reject(new Error('Email notification timed out.')), EMAIL_NOTIFICATION_TIMEOUT_MS);
       }),
     ]);
+    console.info(`EMAIL INFO: Contact notification sent successfully for submission ${submission._id}.`);
   } catch (emailError) {
-    console.error('EMAIL WARNING: Contact submission saved but email notification failed.', emailError);
+    console.error('EMAIL WARNING: Contact submission saved but email notification failed.', {
+      message: emailError?.message,
+      code: emailError?.code,
+      errno: emailError?.errno,
+      syscall: emailError?.syscall,
+      address: emailError?.address,
+      port: emailError?.port,
+      stack: emailError?.stack,
+    });
   }
 };
 

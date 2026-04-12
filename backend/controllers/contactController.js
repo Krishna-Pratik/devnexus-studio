@@ -60,7 +60,7 @@ const sendNotificationEmailInBackground = async (submission, submittedAtISO, fil
   }
 
   try {
-    const transporter = getTransporter();
+    const transporter = await getTransporter();
     const mailOptions = {
       from: `"Devnexus Studio" <${mailUser}>`,
       to: adminEmail,

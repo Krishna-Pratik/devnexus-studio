@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -95,6 +95,33 @@ export default function Contact() {
   const [isCalendlyOpen, setIsCalendlyOpen] = useState(false);
   const { handleError } = useErrorHandler();
   const { showSuccess } = useSuccessToast();
+
+  useEffect(() => {
+    // Best-effort warm-up request to reduce cold-start latency in production.
+    apiFetch('/ping', { method: 'GET' }).catch(() => {});
+  }, []);
+
+  const getSubmissionErrorMessage = (error) => {
+    if (error && typeof error === 'object' && 'type' in error) {
+      if (error.type === 'timeout') {
+        return 'Server is waking up, please wait and try again.';
+      }
+
+      if (error.type === 'network') {
+        return 'Network error. Please check your connection and try again.';
+      }
+
+      if (error.type === 'server') {
+        return error.message || 'Server error. Please try again in a moment.';
+      }
+    }
+
+    if (error instanceof Error && /timeout/i.test(error.message)) {
+      return 'Server is waking up, please wait and try again.';
+    }
+
+    return 'Something went wrong while submitting your inquiry. Please try again.';
+  };
 
   const validate = () => {
     const nextErrors = {};
@@ -213,7 +240,8 @@ export default function Contact() {
       setSubmitted(true);
       showSuccess('Thanks! We will get back to you within 24 hours.');
     } catch (error) {
-      const message = handleError(error, { title: 'Failed to submit contact request', showDetails: true });
+      const message = getSubmissionErrorMessage(error);
+      handleError(message, { title: 'Failed to submit contact request', showDetails: true });
       setServerError(message);
     } finally {
       setSubmitting(false);
@@ -505,7 +533,7 @@ export default function Contact() {
                     {submitting ? (
                       <>
                         <Loader2 className="h-4 w-4 animate-spin" />
-                        Sending request...
+                        Submitting...
                       </>
                     ) : (
                       <>

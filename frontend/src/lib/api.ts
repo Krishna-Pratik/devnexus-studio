@@ -5,6 +5,14 @@ export const API_URL = normalizedEnvBase
   ? `${normalizedEnvBase}/api`
   : '/api';
 
+const REQUEST_TIMEOUT_MS = 35000;
+
+const createTypedError = (message: string, details: Record<string, unknown> = {}) => {
+  const error = new Error(message) as Error & Record<string, unknown>;
+  Object.assign(error, details);
+  return error;
+};
+
 export const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
   const headers = new Headers(options.headers);
   const token = localStorage.getItem('token');
@@ -18,38 +26,58 @@ export const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
   }
 
   const url = `${API_URL}${endpoint}`;
-  const controller = new AbortController();
-  const timeoutMs = 15000;
-  const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
 
-  try {
-    const response = await fetch(url, {
-      ...options,
-      headers,
-      credentials: 'include',
-      signal: controller.signal,
-    });
+  const maxAttempts = 2;
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
-    window.clearTimeout(timeoutId);
+    try {
+      const response = await fetch(url, {
+        ...options,
+        headers,
+        credentials: 'include',
+        signal: controller.signal,
+      });
 
-    const data = await response.json().catch(() => ({}));
+      window.clearTimeout(timeoutId);
 
-    if (!response.ok) {
-      const errorMessage = data.message || `HTTP ${response.status}: ${response.statusText}`;
-      throw new Error(errorMessage);
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        const errorMessage = data.message || `HTTP ${response.status}: ${response.statusText}`;
+        throw createTypedError(errorMessage, {
+          type: 'server',
+          code: `HTTP_${response.status}`,
+          status: response.status,
+        });
+      }
+
+      return data;
+    } catch (error) {
+      window.clearTimeout(timeoutId);
+
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        if (attempt < maxAttempts) {
+          continue;
+        }
+        throw createTypedError('Server is waking up, please wait and try again.', {
+          type: 'timeout',
+          code: 'TIMEOUT',
+          status: 408,
+        });
+      }
+
+      if (error instanceof TypeError) {
+        throw createTypedError('Unable to connect to the server. Please check your internet connection and try again.', {
+          type: 'network',
+          code: 'NETWORK_ERROR',
+        });
+      }
+
+      throw error;
     }
-
-    return data;
-  } catch (error) {
-    window.clearTimeout(timeoutId);
-
-    if (error instanceof DOMException && error.name === 'AbortError') {
-      throw new Error('Request timed out. Please try again.');
-    }
-
-    if (error instanceof TypeError) {
-      throw new Error('Network error: Unable to connect to the API server. Please ensure backend is running and reachable.');
-    }
-    throw error;
   }
+
+  throw createTypedError('An unexpected API error occurred.', { type: 'unknown', code: 'UNKNOWN' });
 };

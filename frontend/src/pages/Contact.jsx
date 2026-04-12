@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -95,11 +95,6 @@ export default function Contact() {
   const [isCalendlyOpen, setIsCalendlyOpen] = useState(false);
   const { handleError } = useErrorHandler();
   const { showSuccess } = useSuccessToast();
-
-  useEffect(() => {
-    // Best-effort warm-up request to reduce cold-start latency in production.
-    apiFetch('/ping', { method: 'GET' }).catch(() => {});
-  }, []);
 
   const getSubmissionErrorMessage = (error) => {
     if (error && typeof error === 'object' && 'type' in error) {

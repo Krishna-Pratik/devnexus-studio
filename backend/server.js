@@ -135,6 +135,10 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/activity', activityRoutes);
 app.use('/api/contact', contactRoutes);
 
+app.get('/api/health', (_req, res) => {
+  res.status(200).json({ status: 'ok' });
+});
+
 app.get('/api/ping', (_req, res) => {
   res.status(200).json({ ok: true, message: 'pong' });
 });

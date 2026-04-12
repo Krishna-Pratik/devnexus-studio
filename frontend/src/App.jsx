@@ -1,7 +1,8 @@
-import { Suspense, lazy } from 'react';
+import { Suspense, lazy, useEffect } from 'react';
 import { Toaster } from "@/components/ui/toaster"
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
+import { API_URL } from '@/lib/api';
 import { pagesConfig } from './pages.config'
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
@@ -67,6 +68,33 @@ const AuthenticatedApp = () => {
 
 
 function App() {
+  useEffect(() => {
+    let retryTimerId;
+
+    const warmUpBackend = async () => {
+      try {
+        await fetch(`${API_URL}/health`, {
+          method: 'GET',
+          credentials: 'include',
+        });
+      } catch {
+        retryTimerId = window.setTimeout(() => {
+          fetch(`${API_URL}/health`, {
+            method: 'GET',
+            credentials: 'include',
+          }).catch(() => {});
+        }, 2500);
+      }
+    };
+
+    warmUpBackend();
+
+    return () => {
+      if (retryTimerId) {
+        window.clearTimeout(retryTimerId);
+      }
+    };
+  }, []);
 
   return (
     <AuthProvider>

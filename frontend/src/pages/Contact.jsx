@@ -84,6 +84,14 @@ function getPhoneValidationError(phoneValue) {
   return '';
 }
 
+function createIdempotencyKey() {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+
+  return `contact-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
 export default function Contact() {
   const [form, setForm] = useState(initialForm);
   const [errors, setErrors] = useState({});
@@ -230,6 +238,11 @@ export default function Contact() {
       await apiFetch('/contact', {
         method: 'POST',
         body: payload,
+        headers: {
+          'Idempotency-Key': createIdempotencyKey(),
+        },
+        retryOnTimeout: true,
+        timeoutMs: 45000,
       });
 
       setSubmitted(true);

@@ -97,6 +97,13 @@ const sendNotificationEmailInBackground = async (submission, submittedAtISO, fil
   }
 };
 
+const removeUploadedFileIfAny = (file) => {
+  if (!file?.path) {
+    return;
+  }
+  fs.unlink(file.path, () => {});
+};
+
 export const createContactSubmission = async (req, res, next) => {
   try {
     const {
@@ -110,6 +117,8 @@ export const createContactSubmission = async (req, res, next) => {
       description = '',
       website = '', // honeypot field
     } = req.body;
+    const idempotencyKeyHeader = req.get('Idempotency-Key') || '';
+    const idempotencyKey = idempotencyKeyHeader.trim().slice(0, 200);
 
     // Honeypot quietly absorbs bot traffic.
     if (website && website.trim()) {
@@ -138,30 +147,76 @@ export const createContactSubmission = async (req, res, next) => {
       throw new Error('Project description should be at least 30 characters.');
     }
 
-    const submission = await ContactSubmission.create({
-      name: normalizedName,
-      email: normalizedEmail,
-      company: company.trim(),
-      phone: phone.trim(),
-      budget: budget.trim(),
-      projectType: projectType.trim(),
-      timeline: timeline.trim(),
-      description: normalizedDescription,
-      file: req.file
-        ? {
-            originalName: req.file.originalname,
-            storedName: req.file.filename,
-            mimeType: req.file.mimetype,
-            size: req.file.size,
-            path: req.file.path,
-          }
-        : undefined,
-      meta: {
-        ip: req.ip || req.headers['x-forwarded-for'] || '',
-        userAgent: req.get('user-agent') || '',
-        submittedAt: new Date(),
-      },
-    });
+    if (idempotencyKey) {
+      const existingSubmission = await ContactSubmission.findOne({ idempotencyKey })
+        .select('_id meta.submittedAt')
+        .lean();
+
+      if (existingSubmission) {
+        removeUploadedFileIfAny(req.file);
+        return res.status(200).json({
+          success: true,
+          message: 'Thanks! We will get back to you within 24 hours.',
+          data: {
+            id: existingSubmission._id,
+            submittedAt: existingSubmission.meta?.submittedAt
+              ? new Date(existingSubmission.meta.submittedAt).toISOString()
+              : new Date().toISOString(),
+            deduped: true,
+          },
+        });
+      }
+    }
+
+    let submission;
+    try {
+      submission = await ContactSubmission.create({
+        name: normalizedName,
+        email: normalizedEmail,
+        company: company.trim(),
+        phone: phone.trim(),
+        budget: budget.trim(),
+        projectType: projectType.trim(),
+        timeline: timeline.trim(),
+        description: normalizedDescription,
+        idempotencyKey: idempotencyKey || undefined,
+        file: req.file
+          ? {
+              originalName: req.file.originalname,
+              storedName: req.file.filename,
+              mimeType: req.file.mimetype,
+              size: req.file.size,
+              path: req.file.path,
+            }
+          : undefined,
+        meta: {
+          ip: req.ip || req.headers['x-forwarded-for'] || '',
+          userAgent: req.get('user-agent') || '',
+          submittedAt: new Date(),
+        },
+      });
+    } catch (dbError) {
+      if (dbError?.code === 11000 && idempotencyKey) {
+        const existingSubmission = await ContactSubmission.findOne({ idempotencyKey })
+          .select('_id meta.submittedAt')
+          .lean();
+        if (existingSubmission) {
+          removeUploadedFileIfAny(req.file);
+          return res.status(200).json({
+            success: true,
+            message: 'Thanks! We will get back to you within 24 hours.',
+            data: {
+              id: existingSubmission._id,
+              submittedAt: existingSubmission.meta?.submittedAt
+                ? new Date(existingSubmission.meta.submittedAt).toISOString()
+                : new Date().toISOString(),
+              deduped: true,
+            },
+          });
+        }
+      }
+      throw dbError;
+    }
 
     const submittedAtISO = submission.meta?.submittedAt
       ? new Date(submission.meta.submittedAt).toISOString()

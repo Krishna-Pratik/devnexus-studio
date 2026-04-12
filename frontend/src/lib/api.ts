@@ -14,7 +14,12 @@ const createTypedError = (message: string, details: Record<string, unknown> = {}
   return error;
 };
 
-export const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
+type ApiFetchOptions = RequestInit & {
+  retryOnTimeout?: boolean;
+  timeoutMs?: number;
+};
+
+export const apiFetch = async (endpoint: string, options: ApiFetchOptions = {}) => {
   const headers = new Headers(options.headers);
   const token = localStorage.getItem('token');
 
@@ -27,11 +32,15 @@ export const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
   }
 
   const url = `${API_URL}${endpoint}`;
+  const method = (options.method || 'GET').toUpperCase();
+  const isIdempotentMethod = method === 'GET' || method === 'HEAD' || method === 'OPTIONS';
+  const retryOnTimeout = options.retryOnTimeout ?? isIdempotentMethod;
+  const timeoutMs = options.timeoutMs ?? REQUEST_TIMEOUT_MS;
 
-  const maxAttempts = 2;
+  const maxAttempts = retryOnTimeout ? 2 : 1;
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     const controller = new AbortController();
-    const timeoutId = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+    const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
 
     try {
       const response = await fetch(url, {

@@ -56,6 +56,10 @@ const contactSubmissionSchema = new mongoose.Schema(
       minlength: [30, 'Project description should be at least 30 characters'],
       maxlength: [5000, 'Project description cannot exceed 5000 characters'],
     },
+    idempotencyKey: {
+      type: String,
+      trim: true,
+    },
     file: {
       originalName: { type: String, default: '' },
       storedName: { type: String, default: '' },
@@ -83,5 +87,6 @@ const contactSubmissionSchema = new mongoose.Schema(
 
 contactSubmissionSchema.index({ email: 1, createdAt: -1 });
 contactSubmissionSchema.index({ status: 1, createdAt: -1 });
+contactSubmissionSchema.index({ idempotencyKey: 1 }, { unique: true, sparse: true });
 
 export default mongoose.model('ContactSubmission', contactSubmissionSchema);

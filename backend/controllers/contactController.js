@@ -3,7 +3,8 @@ import ContactSubmission from '../models/ContactSubmission.js';
 import { getMailUser, getTransporter, isMailConfigured } from '../config/mail.js';
 
 const EMAIL_REGEX = /^\S+@\S+\.\S+$/;
-const EMAIL_NOTIFICATION_TIMEOUT_MS = 12000;
+const EMAIL_MAX_ATTEMPTS = 3;
+const EMAIL_RETRY_BASE_DELAY_MS = 3000;
 
 const escapeHtml = (value = '') => String(value)
   .replace(/&/g, '&amp;')
@@ -43,6 +44,8 @@ const buildMailHtml = (submission, submittedAtISO) => {
   `;
 };
 
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 const sendNotificationEmailInBackground = async (submission, submittedAtISO, file) => {
   const mailUser = getMailUser();
   const adminEmail = process.env.CONTACT_ADMIN_EMAIL || mailUser;
@@ -58,43 +61,69 @@ const sendNotificationEmailInBackground = async (submission, submittedAtISO, fil
 
   try {
     const transporter = getTransporter();
-    console.info(`EMAIL INFO: Sending contact notification for submission ${submission._id} to ${adminEmail}.`);
+    const mailOptions = {
+      from: `"Devnexus Studio" <${mailUser}>`,
+      to: adminEmail,
+      subject: `New Contact Request from ${submission.name}`,
+      replyTo: submission.email,
+      text: [
+        `Submitted at: ${submittedAtISO}`,
+        `Name: ${submission.name}`,
+        `Email: ${submission.email}`,
+        `Company: ${submission.company || 'N/A'}`,
+        `Phone: ${submission.phone || 'N/A'}`,
+        `Budget: ${submission.budget || 'N/A'}`,
+        `Project Type: ${submission.projectType || 'N/A'}`,
+        `Timeline: ${submission.timeline || 'N/A'}`,
+        '',
+        'Project Description:',
+        submission.description,
+      ].join('\n'),
+      html: buildMailHtml(submission, submittedAtISO),
+      attachments: file
+        ? [
+            {
+              filename: file.originalname,
+              path: file.path,
+              contentType: file.mimetype,
+            },
+          ]
+        : [],
+    };
 
-    await Promise.race([
-      transporter.sendMail({
-        from: `"Devnexus Studio" <${mailUser}>`,
-        to: adminEmail,
-        subject: `New Contact Request from ${submission.name}`,
-        replyTo: submission.email,
-        text: [
-          `Submitted at: ${submittedAtISO}`,
-          `Name: ${submission.name}`,
-          `Email: ${submission.email}`,
-          `Company: ${submission.company || 'N/A'}`,
-          `Phone: ${submission.phone || 'N/A'}`,
-          `Budget: ${submission.budget || 'N/A'}`,
-          `Project Type: ${submission.projectType || 'N/A'}`,
-          `Timeline: ${submission.timeline || 'N/A'}`,
-          '',
-          'Project Description:',
-          submission.description,
-        ].join('\n'),
-        html: buildMailHtml(submission, submittedAtISO),
-        attachments: file
-          ? [
-              {
-                filename: file.originalname,
-                path: file.path,
-                contentType: file.mimetype,
-              },
-            ]
-          : [],
-      }),
-      new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Email notification timed out.')), EMAIL_NOTIFICATION_TIMEOUT_MS);
-      }),
-    ]);
-    console.info(`EMAIL INFO: Contact notification sent successfully for submission ${submission._id}.`);
+    let lastError;
+    for (let attempt = 1; attempt <= EMAIL_MAX_ATTEMPTS; attempt += 1) {
+      try {
+        console.info(`EMAIL INFO: Attempt ${attempt}/${EMAIL_MAX_ATTEMPTS} for submission ${submission._id} to ${adminEmail}.`);
+        const info = await transporter.sendMail(mailOptions);
+        console.info(`EMAIL INFO: Contact notification sent successfully for submission ${submission._id}.`, {
+          messageId: info?.messageId,
+          response: info?.response,
+          accepted: info?.accepted,
+          rejected: info?.rejected,
+        });
+        return;
+      } catch (emailError) {
+        lastError = emailError;
+        console.error('EMAIL WARNING: Contact notification attempt failed.', {
+          attempt,
+          totalAttempts: EMAIL_MAX_ATTEMPTS,
+          submissionId: submission?._id,
+          message: emailError?.message,
+          code: emailError?.code,
+          errno: emailError?.errno,
+          syscall: emailError?.syscall,
+          address: emailError?.address,
+          port: emailError?.port,
+        });
+
+        if (attempt < EMAIL_MAX_ATTEMPTS) {
+          await wait(EMAIL_RETRY_BASE_DELAY_MS * attempt);
+        }
+      }
+    }
+
+    throw lastError;
   } catch (emailError) {
     console.error('EMAIL WARNING: Contact submission saved but email notification failed.', {
       message: emailError?.message,

@@ -24,9 +24,10 @@ export const getTransporter = () => {
     port: 587,
     secure: false,
     requireTLS: true,
-    connectionTimeout: 30000,
-    greetingTimeout: 20000,
-    socketTimeout: 30000,
+    connectionTimeout: 60000,
+    greetingTimeout: 30000,
+    socketTimeout: 60000,
+    family: 4,
     auth: {
       user,
       pass,

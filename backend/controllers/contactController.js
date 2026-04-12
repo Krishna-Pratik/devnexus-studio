@@ -1,10 +1,8 @@
 import fs from 'fs';
 import ContactSubmission from '../models/ContactSubmission.js';
-import { getMailUser, getTransporter, isMailConfigured } from '../config/mail.js';
+import { getContactAdminEmail, isMailConfigured, sendEmail } from '../config/mail.js';
 
 const EMAIL_REGEX = /^\S+@\S+\.\S+$/;
-const EMAIL_MAX_ATTEMPTS = 3;
-const EMAIL_RETRY_BASE_DELAY_MS = 3000;
 
 const escapeHtml = (value = '') => String(value)
   .replace(/&/g, '&amp;')
@@ -40,98 +38,45 @@ const buildMailHtml = (submission, submittedAtISO) => {
       </table>
       <h3 style="margin:20px 0 8px 0;">Project Description</h3>
       <p style="padding:12px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;white-space:pre-wrap;">${escapeHtml(description)}</p>
+      <h3 style="margin:20px 0 8px 0;">Message</h3>
+      <p style="padding:12px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;white-space:pre-wrap;">${escapeHtml(description)}</p>
     </div>
   `;
 };
 
-const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-
 const sendNotificationEmailInBackground = async (submission, submittedAtISO, file) => {
-  const mailUser = getMailUser();
-  const adminEmail = process.env.CONTACT_ADMIN_EMAIL || mailUser;
+  const adminEmail = getContactAdminEmail();
   if (!adminEmail) {
-    console.error('EMAIL WARNING: CONTACT_ADMIN_EMAIL and EMAIL_USER are both empty. Skipping email notification.');
+    console.error('EMAIL WARNING: CONTACT_ADMIN_EMAIL is empty. Skipping email notification.');
     return;
   }
 
   if (!isMailConfigured()) {
-    console.error('EMAIL WARNING: Missing EMAIL_USER or EMAIL_PASS. Contact submission saved without email notification.');
+    console.error('EMAIL WARNING: Missing RESEND_API_KEY or CONTACT_ADMIN_EMAIL. Contact submission saved without email notification.');
     return;
   }
 
   try {
-    const transporter = await getTransporter();
-    const mailOptions = {
-      from: `"Devnexus Studio" <${mailUser}>`,
+    console.info(`EMAIL INFO: Sending Resend notification for submission ${submission._id} to ${adminEmail}.`);
+
+    const emailResult = await sendEmail({
       to: adminEmail,
-      subject: `New Contact Request from ${submission.name}`,
-      replyTo: submission.email,
-      text: [
-        `Submitted at: ${submittedAtISO}`,
-        `Name: ${submission.name}`,
-        `Email: ${submission.email}`,
-        `Company: ${submission.company || 'N/A'}`,
-        `Phone: ${submission.phone || 'N/A'}`,
-        `Budget: ${submission.budget || 'N/A'}`,
-        `Project Type: ${submission.projectType || 'N/A'}`,
-        `Timeline: ${submission.timeline || 'N/A'}`,
-        '',
-        'Project Description:',
-        submission.description,
-      ].join('\n'),
+      subject: 'New Project Inquiry',
       html: buildMailHtml(submission, submittedAtISO),
-      attachments: file
-        ? [
-            {
-              filename: file.originalname,
-              path: file.path,
-              contentType: file.mimetype,
-            },
-          ]
-        : [],
-    };
+    });
 
-    let lastError;
-    for (let attempt = 1; attempt <= EMAIL_MAX_ATTEMPTS; attempt += 1) {
-      try {
-        console.info(`EMAIL INFO: Attempt ${attempt}/${EMAIL_MAX_ATTEMPTS} for submission ${submission._id} to ${adminEmail}.`);
-        const info = await transporter.sendMail(mailOptions);
-        console.info(`EMAIL INFO: Contact notification sent successfully for submission ${submission._id}.`, {
-          messageId: info?.messageId,
-          response: info?.response,
-          accepted: info?.accepted,
-          rejected: info?.rejected,
-        });
-        return;
-      } catch (emailError) {
-        lastError = emailError;
-        console.error('EMAIL WARNING: Contact notification attempt failed.', {
-          attempt,
-          totalAttempts: EMAIL_MAX_ATTEMPTS,
-          submissionId: submission?._id,
-          message: emailError?.message,
-          code: emailError?.code,
-          errno: emailError?.errno,
-          syscall: emailError?.syscall,
-          address: emailError?.address,
-          port: emailError?.port,
-        });
-
-        if (attempt < EMAIL_MAX_ATTEMPTS) {
-          await wait(EMAIL_RETRY_BASE_DELAY_MS * attempt);
-        }
-      }
-    }
-
-    throw lastError;
+    console.info('EMAIL INFO: Resend notification sent successfully.', {
+      submissionId: submission?._id,
+      adminEmail,
+      emailId: emailResult?.id,
+      hasAttachment: Boolean(file),
+    });
   } catch (emailError) {
-    console.error('EMAIL WARNING: Contact submission saved but email notification failed.', {
+    console.error('EMAIL WARNING: Contact submission saved but Resend notification failed.', {
+      submissionId: submission?._id,
+      adminEmail,
       message: emailError?.message,
       code: emailError?.code,
-      errno: emailError?.errno,
-      syscall: emailError?.syscall,
-      address: emailError?.address,
-      port: emailError?.port,
       stack: emailError?.stack,
     });
   }

@@ -1,66 +1,40 @@
-import nodemailer from 'nodemailer';
-import dns from 'dns';
+import { Resend } from 'resend';
 
-const getEmailUser = () => process.env.EMAIL_USER?.trim() || '';
-const getEmailPass = () => process.env.EMAIL_PASS?.replace(/\s+/g, '') || '';
-const SMTP_SERVERNAME = 'smtp.gmail.com';
-const TRANSPORTER_CACHE_TTL_MS = 5 * 60 * 1000;
+const FROM_EMAIL = 'Devnexus <onboarding@resend.dev>';
 
-export const isMailConfigured = () => Boolean(getEmailUser() && getEmailPass());
+const getResendApiKey = () => process.env.RESEND_API_KEY?.trim() || '';
+export const getContactAdminEmail = () => process.env.CONTACT_ADMIN_EMAIL?.trim() || '';
 
-export const getMailUser = () => getEmailUser();
+export const isMailConfigured = () => Boolean(getResendApiKey() && getContactAdminEmail());
 
-let cachedTransporter = null;
-let cachedTransporterKey = '';
-let cachedTransporterHost = '';
-let cachedTransporterExpiresAt = 0;
+let cachedResendClient = null;
+let cachedClientKey = '';
 
-const resolveSmtpIpv4Host = async () => {
-  return new Promise((resolve) => {
-    dns.resolve4(SMTP_SERVERNAME, (err, addresses) => {
-      if (err || !Array.isArray(addresses) || addresses.length === 0) {
-        resolve(SMTP_SERVERNAME);
-        return;
-      }
-      resolve(addresses[0]);
-    });
-  });
-};
+const getResendClient = () => {
+  const apiKey = getResendApiKey();
 
-export const getTransporter = async () => {
-  const user = getEmailUser();
-  const pass = getEmailPass();
-  const nextKey = `${user}:${pass}`;
-  const now = Date.now();
-
-  if (cachedTransporter && cachedTransporterKey === nextKey && cachedTransporterExpiresAt > now) {
-    return cachedTransporter;
+  if (cachedResendClient && cachedClientKey === apiKey) {
+    return cachedResendClient;
   }
 
-  const smtpHost = await resolveSmtpIpv4Host();
+  cachedResendClient = new Resend(apiKey);
+  cachedClientKey = apiKey;
+  return cachedResendClient;
+};
 
-  cachedTransporter = nodemailer.createTransport({
-    host: smtpHost,
-    port: 587,
-    secure: false,
-    requireTLS: true,
-    connectionTimeout: 60000,
-    greetingTimeout: 30000,
-    socketTimeout: 60000,
-    family: 4,
-    tls: {
-      servername: SMTP_SERVERNAME,
-    },
-    auth: {
-      user,
-      pass,
-    },
+export const sendEmail = async ({ to, subject, html }) => {
+  const resend = getResendClient();
+
+  const result = await resend.emails.send({
+    from: FROM_EMAIL,
+    to,
+    subject,
+    html,
   });
-  cachedTransporterKey = nextKey;
-  cachedTransporterHost = smtpHost;
-  cachedTransporterExpiresAt = now + TRANSPORTER_CACHE_TTL_MS;
 
-  console.info(`EMAIL INFO: SMTP transporter initialized with host ${cachedTransporterHost} (servername ${SMTP_SERVERNAME}).`);
+  if (result?.error) {
+    throw new Error(result.error.message || 'Resend email send failed.');
+  }
 
-  return cachedTransporter;
+  return result?.data;
 };

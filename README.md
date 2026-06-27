@@ -189,6 +189,8 @@ npm run dev
 | `JWT_SECRET` | Secret key for signing JWTs |
 | `CLIENT_URL` | Frontend URL for CORS (e.g., http://localhost:5173) |
 | `GOOGLE_CLIENT_ID` | OAuth Client ID from Google Cloud Console |
+| `GOOGLE_CLIENT_SECRET` | OAuth Client Secret from Google Cloud Console |
+| `GOOGLE_REDIRECT_URI` | Authorized Google redirect URI for the backend callback (e.g., https://api.example.com/api/auth/google/callback) |
 
 ### Frontend (`frontend/.env`)
 | Variable | Description |

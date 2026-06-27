@@ -1,6 +1,6 @@
 // Devnexus Studio Backend Entry Point
+import './config/loadEnv.js'; // must be first: loads env before any module reads it
 import express from 'express';
-import dotenv from 'dotenv';
 import fs from 'fs';
 import https from 'https';
 import dns from 'dns';
@@ -21,13 +21,13 @@ import { errorHandler, notFound } from './middlewares/errorMiddleware.js';
 
 dns.setDefaultResultOrder('ipv4first');
 
-dotenv.config();
-
 const app = express();
 
 const isProduction = process.env.NODE_ENV === 'production';
 const configuredClientUrl = process.env.CLIENT_URL?.trim();
 const googleClientId = process.env.GOOGLE_CLIENT_ID?.trim();
+const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET?.trim();
+const googleRedirectUri = process.env.GOOGLE_REDIRECT_URI?.trim();
 const jwtSecret = process.env.JWT_SECRET?.trim();
 const sslKeyPath = process.env.SSL_KEY_PATH?.trim();
 const sslCertPath = process.env.SSL_CERT_PATH?.trim();
@@ -42,6 +42,16 @@ if (isProduction && !configuredClientUrl) {
 
 if (isProduction && !googleClientId) {
   console.error('GOOGLE_CLIENT_ID is required in production.');
+  process.exit(1);
+}
+
+if (isProduction && !googleClientSecret) {
+  console.error('GOOGLE_CLIENT_SECRET is required in production.');
+  process.exit(1);
+}
+
+if (isProduction && !googleRedirectUri) {
+  console.error('GOOGLE_REDIRECT_URI is required in production.');
   process.exit(1);
 }
 

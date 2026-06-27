@@ -36,3 +36,7 @@ backend/uploads/
 *.sw?
 
 .env
+
+# Personal / local-only files (not for GitHub)
+.playwright-mcp/
+PROJECT_DOCUMENTATION.md

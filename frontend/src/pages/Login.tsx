@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ShieldCheck, Sparkles, Zap } from 'lucide-react';
 import { useAuth } from '../lib/AuthContext';
 import GoogleAuthButton from '@/components/auth/GoogleAuthButton';
@@ -10,8 +10,37 @@ export default function Login() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const { login } = useAuth();
+  const { login, refreshUser } = useAuth();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Handle the return leg of the Google OAuth redirect flow. The backend sets
+  // the auth cookie and redirects here with ?google=success|failed.
+  useEffect(() => {
+    const googleStatus = searchParams.get('google');
+    if (!googleStatus) {
+      return;
+    }
+
+    // Strip the param so a refresh doesn't re-trigger this.
+    setSearchParams({}, { replace: true });
+
+    if (googleStatus === 'success') {
+      setIsLoading(true);
+      refreshUser()
+        .then((ok) => {
+          if (ok) {
+            navigate('/dashboard', { replace: true });
+          } else {
+            setError('Google sign-in could not be completed. Please try again.');
+          }
+        })
+        .finally(() => setIsLoading(false));
+    } else if (googleStatus === 'failed') {
+      setError('Google sign-in was cancelled or failed. Please try again.');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const inputClass =
     'appearance-none relative block w-full rounded-xl border border-white/10 bg-slate-950/40 px-4 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-violet-500/40 focus:border-transparent sm:text-sm transition-all hover:border-violet-400/40';

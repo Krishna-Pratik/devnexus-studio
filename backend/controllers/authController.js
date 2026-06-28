@@ -1,4 +1,5 @@
 // Authentication Controller Logic
+import crypto from 'crypto';
 import User from '../models/User.js';
 import validator from 'validator';
 import { OAuth2Client } from 'google-auth-library';
@@ -23,11 +24,22 @@ const buildFrontendUrl = (pathname) => {
   return new URL(pathname, frontendBaseUrl.endsWith('/') ? frontendBaseUrl : `${frontendBaseUrl}/`).toString();
 };
 
+const isProductionEnv = process.env.NODE_ENV === 'production';
+
+// In production the frontend (Vercel) and backend (Render) live on different
+// sites, so the auth cookie must be SameSite=None + Secure to be sent on
+// cross-site requests (e.g. the /auth/me XHR after the Google redirect flow).
+// In development everything is on localhost (same site), so Lax works and
+// avoids the Secure requirement that None imposes.
+const crossSiteCookieOptions = {
+  httpOnly: true,
+  secure: isProductionEnv,
+  sameSite: isProductionEnv ? 'none' : 'lax',
+};
+
 const setAuthCookie = (res, token) => {
   res.cookie('access_token', token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
+    ...crossSiteCookieOptions,
     maxAge: 60 * 60 * 1000,
   });
 };
@@ -227,17 +239,52 @@ export const googleAuth = async (req, res, next) => {
   }
 };
 
+const GOOGLE_STATE_COOKIE = 'g_oauth_state';
+
+// @desc    Begin Google OAuth redirect flow (popup-free)
+// @route   GET /api/auth/google/start
+// @access  Public
+export const googleAuthStart = (req, res) => {
+  if (!googleClientId || !googleClientSecret || !googleRedirectUri) {
+    return res.status(503).send('Google auth is not configured.');
+  }
+
+  // CSRF protection: round-trip a random state via a short-lived cookie and
+  // verify it on the callback. Prevents login-CSRF (forcing a victim to sign
+  // in to an attacker-controlled account).
+  const state = crypto.randomBytes(16).toString('hex');
+
+  res.cookie(GOOGLE_STATE_COOKIE, state, {
+    ...crossSiteCookieOptions,
+    maxAge: 10 * 60 * 1000, // 10 minutes
+  });
+
+  const authUrl = googleClient.generateAuthUrl({
+    access_type: 'online',
+    scope: ['openid', 'email', 'profile'],
+    state,
+    prompt: 'select_account',
+  });
+
+  return res.redirect(authUrl);
+};
+
 // @desc    Google auth callback (redirect flow)
 // @route   GET /api/auth/google/callback
 // @access  Public
 export const googleAuthCallback = async (req, res) => {
   const code = typeof req.query.code === 'string' ? req.query.code : '';
+  const state = typeof req.query.state === 'string' ? req.query.state : '';
+  const expectedState = req.cookies?.[GOOGLE_STATE_COOKIE] || '';
+
+  // State cookie is single-use; clear it regardless of outcome.
+  res.clearCookie(GOOGLE_STATE_COOKIE, crossSiteCookieOptions);
 
   if (!googleClientId || !googleClientSecret || !googleRedirectUri) {
     return res.status(503).send('Google auth is not configured.');
   }
 
-  if (!code) {
+  if (!code || !state || !expectedState || state !== expectedState) {
     return res.redirect(buildFrontendUrl('/login?google=failed'));
   }
 
@@ -270,7 +317,7 @@ export const googleAuthCallback = async (req, res) => {
     });
 
     setAuthCookie(res, token);
-    return res.redirect(buildFrontendUrl('/dashboard'));
+    return res.redirect(buildFrontendUrl('/login?google=success'));
   } catch (_error) {
     return res.redirect(buildFrontendUrl('/login?google=failed'));
   }

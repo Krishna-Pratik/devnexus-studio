@@ -57,12 +57,14 @@ export const AuthProvider = ({ children }) => {
       setIsAuthenticated(true);
       markSessionHint();
       console.info('[Auth] refreshUser success');
+      return true;
     } catch (_error) {
       setUser(null);
       setIsAuthenticated(false);
       localStorage.removeItem('token');
       clearSessionHint();
       console.info('[Auth] refreshUser unauthenticated');
+      return false;
     } finally {
       setIsLoadingAuth(false);
     }

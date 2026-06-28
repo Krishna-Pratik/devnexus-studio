@@ -104,7 +104,7 @@ Devnexus Studio is our proprietary digital solution designed to help businesses 
 - 🎨 **Bespoke Portfolio Presentation:** High-performance, visually stunning project showcases with buttery-smooth animations.
 
 ### 🛠️ Technical Capabilities
-- **Secure Authentication:** Robust local signup/login backed by seamless Google OAuth integration.
+- **Secure Authentication:** Robust local signup/login plus a popup-free, redirect-based Google OAuth sign-in flow.
 - 🔄 **State & Session Persistence:** Protected routes utilizing auto-restoring user states and secure `httpOnly` cookies.
 - 🛑 **Reliable API Handling:** Centralized schema validation (`Zod`) guaranteeing consistent data integrity and standardized error reporting.
 - ⚡ **Optimized UX/UI:** Accessible interfaces built with global loading skeletons, responsive grid layouts, and comprehensive error recovery.
@@ -137,6 +137,7 @@ Security and data integrity are foundational to this application's architecture:
 > **Rate Limiting:** Sensitive endpoints (e.g., login, signup) are protected against brute-force attempts.<br>
 > **Helmet Integration:** Standard secure HTTP headers are automatically applied to API responses.<br>
 > **Strict CORS Policies:** API access is explicitly restricted to trusted frontend origins.<br>
+> **OAuth CSRF Protection:** The Google redirect flow round-trips a single-use `state` token and issues cross-site auth cookies as `SameSite=None; Secure`.<br>
 > **Proxy-Aware HTTPS:** The server correctly enforces and handles secure connections in cloud environments.
 
 ## 📸 Screenshots

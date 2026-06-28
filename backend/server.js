@@ -45,14 +45,18 @@ if (isProduction && !googleClientId) {
   process.exit(1);
 }
 
+// GOOGLE_CLIENT_SECRET and GOOGLE_REDIRECT_URI are only needed for the
+// server-side redirect callback flow (GET /api/auth/google/callback). The
+// active frontend uses the GSI popup/credential flow, which needs only
+// GOOGLE_CLIENT_ID. Warn instead of crashing so a missing optional config
+// doesn't take the whole API down; the callback route returns 503 on its own
+// if it is hit without these set.
 if (isProduction && !googleClientSecret) {
-  console.error('GOOGLE_CLIENT_SECRET is required in production.');
-  process.exit(1);
+  console.warn('GOOGLE_CLIENT_SECRET is not set; the Google redirect callback flow is disabled.');
 }
 
 if (isProduction && !googleRedirectUri) {
-  console.error('GOOGLE_REDIRECT_URI is required in production.');
-  process.exit(1);
+  console.warn('GOOGLE_REDIRECT_URI is not set; the Google redirect callback flow is disabled.');
 }
 
 if (isProduction && !jwtSecret) {

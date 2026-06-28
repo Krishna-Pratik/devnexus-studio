@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ShieldCheck, Sparkles, Zap } from 'lucide-react';
 import { useAuth } from '../lib/AuthContext';
 import GoogleAuthButton from '@/components/auth/GoogleAuthButton';
+import BackButton from '@/components/shared/BackButton';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -71,6 +72,10 @@ export default function Login() {
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute left-[8%] top-[8%] h-64 w-64 rounded-full bg-violet-600/20 blur-[110px]" />
         <div className="absolute bottom-[5%] right-[10%] h-72 w-72 rounded-full bg-indigo-600/20 blur-[120px]" />
+      </div>
+
+      <div className="absolute left-4 top-4 z-20 sm:left-6 sm:top-6">
+        <BackButton variant="dark" fallback="/" />
       </div>
 
       <div className="relative z-10 mx-auto grid w-full max-w-6xl items-center gap-6 lg:grid-cols-2 lg:items-center lg:justify-items-center">

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
+import BackButton from '@/components/shared/BackButton';
 import {
   BarChart3,
   FolderOpen,
@@ -97,9 +98,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       >
         {/* Top Bar */}
         <header className="bg-white shadow-sm border-b border-slate-200 px-8 py-4 flex items-center justify-between sticky top-0 z-10">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900">Dashboard</h1>
-            <p className="text-sm text-slate-600">Welcome back, {user?.name}</p>
+          <div className="flex items-center gap-4">
+            <BackButton variant="light" fallback="/" />
+            <div className="h-8 w-px bg-slate-200" aria-hidden="true" />
+            <div>
+              <h1 className="text-2xl font-bold text-slate-900">Dashboard</h1>
+              <p className="text-sm text-slate-600">Welcome back, {user?.name}</p>
+            </div>
           </div>
           <div className="text-right text-sm text-slate-600">
             {new Date().toLocaleDateString('en-US', {
